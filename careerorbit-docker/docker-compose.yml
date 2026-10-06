@@ -1,0 +1,415 @@
+networks:
+  careerorbit-net:
+    driver: bridge
+
+services:
+
+  userdb:
+    image: postgres:16
+    container_name: careerorbit-userdb
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      POSTGRES_DB: careerorbit_user
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careerorbit-net
+
+  companydb:
+    image: postgres:16
+    container_name: careerorbit-companydb
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      POSTGRES_DB: careerorbit_company
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careerorbit-net
+
+  jobdb:
+    image: postgres:16
+    container_name: careerorbit-jobdb
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      POSTGRES_DB: careerorbit_job
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careerorbit-net
+
+  applicationdb:
+    image: postgres:16
+    container_name: careerorbit-applicationdb
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      POSTGRES_DB: careerorbit_application
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careerorbit-net
+
+  preferencedb:
+    image: postgres:16
+    container_name: careerorbit-preferencedb
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      POSTGRES_DB: careerorbit_preference
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careerorbit-net
+
+  resumedb:
+    image: postgres:16
+    container_name: careerorbit-resumedb
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "5438:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      POSTGRES_DB: careerorbit_resume
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careerorbit-net
+
+
+  discovery:
+    image: rahulnanhore05/careerorbit-service-registry
+    container_name: careerorbit-service-registry
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 45s
+    networks:
+      - careerorbit-net
+
+  config-server:
+    image: rahulnanhore05/careerorbit-config-server
+    container_name: careerorbit-config-server
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8888:8888"
+    depends_on:
+      discovery:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_CONFIG_SERVER_GIT_PASSWORD: ${CAREERORBIT_GIT_TOKEN}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  api-gateway:
+    image: rahulnanhore05/careerorbit-api-gateway
+    container_name: careerorbit-api-gateway
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "5555:5555"
+    depends_on:
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SECURITY_JWT_SECRET: ${CAREERORBIT_SECURITY_JWT_SECRET}
+      SECURITY_JWT_ISSUER: ${CAREERORBIT_SECURITY_JWT_ISSUER}
+    networks:
+      - careerorbit-net
+
+
+  user-service:
+    image: rahulnanhore05/careerorbit-user-service
+    container_name: careerorbit-user-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8001:8001"
+    depends_on:
+      userdb:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://userdb:5432/careerorbit_user
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      SECURITY_JWT_SECRET: ${CAREERORBIT_SECURITY_JWT_SECRET}
+      SECURITY_JWT_ISSUER: ${CAREERORBIT_SECURITY_JWT_ISSUER}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q0- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  company-service:
+    image: rahulnanhore05/careerorbit-company-service
+    container_name: careerorbit-company-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8002:8002"
+    depends_on:
+      companydb:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://companydb:5432/careerorbit_company
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  job-service:
+    image: rahulnanhore05/careerorbit-job-service
+    container_name: careerorbit-job-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8003:8003"
+    depends_on:
+      jobdb:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://jobdb:5432/careerorbit_job
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  application-service:
+    image: rahulnanhore05/careerorbit-application-service
+    container_name: careerorbit-application-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8005:8005"
+    depends_on:
+      applicationdb:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://applicationdb:5432/careerorbit_application
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  preference-service:
+    image: rahulnanhore05/careerorbit-preference-service
+    container_name: careerorbit-preference-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8006:8006"
+    depends_on:
+      preferencedb:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://preferencedb:5432/careerorbit_preference
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  resume-service:
+    image: rahulnanhore05/careerorbit-resume-service
+    container_name: careerorbit-resume-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8004:8004"
+    depends_on:
+      resumedb:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://resumedb:5432/careerorbit_resume
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  ai-service:
+    image: rahulnanhore05/careerorbit-ai-service
+    container_name: careerorbit-ai-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8007:8007"
+    depends_on:
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      GEMINI_API_KEY: ${CAREERORBIT_GEMINI_API_KEY}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net
+
+  notification-service:
+    image: rahulnanhore05/careerorbit-notification-service
+    container_name: careerorbit-notification-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    ports:
+      - "8008:8008"
+    depends_on:
+      discovery:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery:8761/eureka/
+      SPRING_MAIL_HOST: ${CAREERORBIT_MAIL_HOST}
+      SPRING_MAIL_PORT: ${CAREERORBIT_MAIL_PORT}
+      SPRING_MAIL_USERNAME: ${CAREERORBIT_MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${CAREERORBIT_MAIL_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: ${CAREERORBIT_KAFKA_BOOTSTRAP_SERVERS}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+    networks:
+      - careerorbit-net

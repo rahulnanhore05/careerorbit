@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="careerorbit-application-service" />
+        <module name="careerorbit-service-registry" />
+        <module name="careerorbit-ai-service" />
+        <module name="careerorbit-job-service" />
+        <module name="careerorbit-api-gateway" />
+        <module name="careerorbit-company-service" />
+        <module name="careerorbit-notification-service" />
+        <module name="careerorbit-user-service" />
+        <module name="careerorbit-resume-service" />
+        <module name="careerorbit-preference-service" />
+        <module name="careerorbit-common" />
+        <module name="careerorbit-config-server" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="careerorbit-config-service" target="21" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="careerorbit-ai-service" options="-parameters" />
+      <module name="careerorbit-api-gateway" options="-parameters" />
+      <module name="careerorbit-application-service" options="-parameters" />
+      <module name="careerorbit-common" options="-parameters" />
+      <module name="careerorbit-company-service" options="-parameters" />
+      <module name="careerorbit-config-server" options="-parameters" />
+      <module name="careerorbit-config-service" options="-parameters" />
+      <module name="careerorbit-job-service" options="-parameters" />
+      <module name="careerorbit-notification-service" options="-parameters" />
+      <module name="careerorbit-preference-service" options="-parameters" />
+      <module name="careerorbit-resume-service" options="-parameters" />
+      <module name="careerorbit-service-registry" options="-parameters" />
+      <module name="careerorbit-user-service" options="-parameters" />
+    </option>
+  </component>
+</project>
